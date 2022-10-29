@@ -17,6 +17,14 @@
                         let parts = hash.substring(1).split('/')
                         _this.rootNum = (new Ip.Addr(parts[0])).toNum()
                         _this.rootMaskNum = parseInt(parts[1])
+                        
+                        if (!Number.isInteger(_this.rootNum))
+                        {
+                            _this.rootNum = 0
+                        }
+                        if (!Number.isInteger(_this.rootMaskNum)) {
+                            _this.rootMaskNum = 29;
+                        }
 
                         let cur_url = new URL(document.URL);
                         cur_url.hash = _this.prefix.toString();
