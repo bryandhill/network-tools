@@ -17,7 +17,7 @@
                         let parts = hash.substring(1).split('/')
                         _this.rootNum = (new Ip.Addr(parts[0])).toNum()
                         _this.rootMaskNum = parseInt(parts[1])
-                        
+
                         if (!Number.isInteger(_this.rootNum))
                         {
                             _this.rootNum = 0
@@ -25,6 +25,9 @@
                         if (!Number.isInteger(_this.rootMaskNum)) {
                             _this.rootMaskNum = 29;
                         }
+
+                        _this.rootMaskNum = Math.min(29,Math.max(0,_this.rootMaskNum))
+                        _this.rootNum = Math.min(Math.floor(Math.pow(2,32)-1),Math.max(0,_this.rootNum))
 
                         let cur_url = new URL(document.URL);
                         cur_url.hash = _this.prefix.toString();
@@ -98,6 +101,57 @@
                 get c4r8() {
                     return this.prefix.slice(this.rootMaskNum + 1)[1].slice(this.rootMaskNum + 2)[1].slice(this.rootMaskNum + 3)[1].toString();
                 },
+
+                get before() {
+                    if (this.rootMaskNum == 0)
+                        return "";
+
+                    return (new Ip.Prefix(this.prefix.firstIp().toNum() - 1, this.rootMaskNum)).correctBitBoundary().toString();
+                },
+                get after() {
+                    if (this.rootMaskNum == 0)
+                        return "";
+
+                    return (new Ip.Prefix(this.prefix.firstIp().toString(), this.rootMaskNum - 1)).slice(this.rootMaskNum)[1].toString();
+                },
+                get up() {
+                    if (this.rootMaskNum == 0)
+                        return "";
+
+                    return new Ip.Prefix(this.prefix.firstIp().toString(), this.rootMaskNum - 1).toString();
+                },
+                clickSubnet(pref) {
+                    const hash = window.location.hash;
+                    let parts = pref.split('/')
+                    this.rootNum = (new Ip.Addr(parts[0])).toNum()
+                    this.rootMaskNum = parseInt(parts[1])
+
+                    if (!Number.isInteger(this.rootNum))
+                    {
+                        this.rootNum = 0
+                    }
+                    if (!Number.isInteger(this.rootMaskNum)) {
+                        this.rootMaskNum = 29;
+                    }
+
+                    this.rootMaskNum = Math.min(29,Math.max(0,this.rootMaskNum))
+                    this.rootNum = Math.min(Math.floor(Math.pow(2,32)-1),Math.max(0,this.rootNum))
+
+                    let cur_url = new URL(document.URL);
+                    cur_url.hash = this.prefix.toString();
+                    document.location.href = cur_url.href;
+
+                    document.title = "Subnet Visualizer - " + this.prefix.toString();
+                },
+                get navi() {
+                    return this.rootMaskNum != 0;
+                },
+                get beforeShow() {
+                    return true;
+                },
+                get afterShow() {
+                    return true;
+                }
             }));
         });
     </script>
@@ -111,40 +165,7 @@
           -webkit-user-select: none;
           -moz-user-select: none;
         }
-        .textBottom {
-            position: absolute;
-            top: 100%;
-            right: 50%;
-            transform: translateY(-100%) translateX(50%);
-        }
-        .textTop {
-            position: absolute;
-            top: 0;
-            right: 50%;
-            transform: translateX(50%);
-        }
-        .textCentered {
-            position: absolute;
-            top: 50%;
-            right: 50%;
-            transform: translateX(50%) translateY(-50%);
-        }
-        .debug {
-            position: absolute;
-            float: left;
-            z-index: 100;
 
-            top: 10px;
-            left: 10px;
-            width: 100px;
-            font-size: 10pt;
-            font-family: "Courier New", monospace;
-
-            background: rgba(255,214,92,0.5);
-            user-select: text;
-
-            padding: 2px;
-        }
         .debug span {
             float: left;
             opacity: 1;
@@ -170,21 +191,22 @@
             left: 75%;
             position: absolute;
         }
+
         .col1.row1 {
             background-color: #FFFFFF;
             top: 0;
-            height: 100%;
+            height: 99.9%;
         }
 
         .col2.row1 {
             background-color: #F0F0F0;
             top: 0%;
-            height: 100%;
+            height: 99.9%;
         }
         .col2.row2 {
             background-color: #E8E8E8;
             top: 50%;
-            height: 50%;
+            height: 49.9%;
             border-top: 1px solid black;
         }
 
@@ -202,13 +224,13 @@
         .col3.row3 {
             background-color: #D0D0D0;
             top: 50%;
-            height: 50%;
+            height: 49.9%;
             border-top: 1px solid black;
         }
         .col3.row4 {
             background-color: #C8C8C8;
             top: 75%;
-            height: 25%;
+            height: 24.9%;
             border-top: 1px solid black;
         }
 
@@ -250,75 +272,146 @@
         .col4.row7 {
             background-color: #909090;
             top: 75%;
-            height: 25%;
+            height: 24.9%;
             border-top: 1px solid black;
         }
         .col4.row8 {
             background-color: #888888;
             top: 87.5%;
-            height: 12.5%;
+            height: 12.4%;
             border-top: 1px solid black;
+        }
+
+        .debug {
+            position: absolute;
+            float: left;
+            z-index: 100;
+
+            top: 10px;
+            left: 10px;
+            width: 100px;
+            font-size: 10pt;
+            font-family: "Courier New", monospace;
+
+            background: rgba(255,214,92,0.5);
+            user-select: text;
+
+            padding: 2px;
+        }
+        .textBottom {
+            position: absolute;
+            top: 100%;
+            right: 50%;
+            transform: translateY(-100%) translateX(50%);
+        }
+        .textTop {
+            position: absolute;
+            top: 0;
+            right: 50%;
+            transform: translateX(50%);
+        }
+        .textCentered {
+            position: absolute;
+            top: 50%;
+            right: 50%;
+            transform: translateX(50%) translateY(-50%);
+        }
+
+        .navigateOuter {
+            position: absolute;
+            float: left;
+            z-index: 100;
+            top: 100%;
+            transform: translateY(-100%);
+            left: 0;
+            margin: 0;
+            padding: 10px;
+        }
+        .navigateInner {
+            margin: 0;
+            padding: 5px;
+            background-color: lightblue;
+            border-radius: 10px;
+            border: 1px solid black;
+            width: 90%;
+            height: 90%;
+        }
+        .link {
+            color: blue;
+            text-decoration: underline;
+            cursor: pointer;
         }
     </style>
 </head>
 <body x-data="data" class="disabled">
+    <!--
     <div class="debug">
         <span x-html="debugData"></span>
+    </div>
+    -->
+    <div class="navigateOuter" style="display: none;" x-show="navi">
+        <div class="navigateInner">
+            <div>
+                <div style="position:absolute; top: 13px; right:50%; transform: translateX(50%); padding: 2px; font-size: 1vw; border: 1px solid black; border-radius: 10px; background-color: darkblue; color: white">Navigation</div>
+                <table style="margin-top: 32px; font-size: 1.25vw;">
+                    <tr><td colspan="2" style="text-align: center;" style="display: none;" x-show="beforeShow">&uparrow;&nbsp;<span class="link" x-html="before" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="before"></span></td></tr>
+                    <tr><td style="text-align: center;">&leftarrow;&nbsp;<span class="link" x-html="up" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="up"></span></td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr>
+                    <tr><td colspan="2" style="text-align: center;" style="display: none;" x-show="afterShow">&downarrow;&nbsp;<span class="link" x-html="after" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="after"></span></td></tr>
+                </table>
+            </div>
+        </div>
     </div>
     <div>
         <div class="col1 row1">
             <div class="textTop" x-text="c1r1"></div>
-            <div>
-
-            </div>
         </div>
 
 
         <div class="col2 row1">
-            <div class="textTop" x-text="c2r1"></div>
+            <div class="textTop link" x-text="c2r1" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c2r1"></div>
         </div>
         <div class="col2 row2">
-            <div class="textTop" x-text="c2r2"></div>
+            <div class="textTop link" x-text="c2r2" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c2r2"></div>
         </div>
 
 
         <div class="col3 row1">
-            <div class="textTop" x-text="c3r1"></div>
+            <div class="textTop link" x-text="c3r1" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c3r1"></div>
         </div>
         <div class="col3 row2">
-            <div class="textTop" x-text="c3r2"></div>
+            <div class="textTop link" x-text="c3r2" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c3r2"></div>
         </div>
         <div class="col3 row3">
-            <div class="textTop" x-text="c3r3"></div>
+            <div class="textTop link" x-text="c3r3" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c3r3"></div>
         </div>
         <div class="col3 row4">
-            <div class="textTop" x-text="c3r4"></div>
+            <div class="textTop link" x-text="c3r4" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c3r4"></div>
         </div>
 
 
         <div class="col4 row1">
-            <div class="textTop" x-text="c4r1"></div>
+            <div class="textTop link" x-text="c4r1" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c4r1"></div>
         </div>
         <div class="col4 row2">
-            <div class="textTop" x-text="c4r2"></div>
+            <div class="textTop link" x-text="c4r2" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c4r2"></div>
         </div>
         <div class="col4 row3">
-            <div class="textTop" x-text="c4r3"></div>
+            <div class="textTop link" x-text="c4r3" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c4r3"></div>
         </div>
         <div class="col4 row4">
-            <div class="textTop" x-text="c4r4"></div>
+            <div class="textTop link" x-text="c4r4" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c4r4"></div>
         </div>
         <div class="col4 row5">
-            <div class="textTop" x-text="c4r5"></div>
+            <div class="textTop link" x-text="c4r5" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c4r5"></div>
         </div>
         <div class="col4 row6">
-            <div class="textTop" x-text="c4r6"></div>
+            <div class="textTop link" x-text="c4r6" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c4r6"></div>
         </div>
         <div class="col4 row7">
-            <div class="textTop" x-text="c4r7"></div>
+            <div class="textTop link" x-text="c4r7" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c4r7"></div>
         </div>
         <div class="col4 row8">
-            <div class="textTop" x-text="c4r8"></div>
+            <div class="textTop link" x-text="c4r8" x-on:click="clickSubnet($event.target.getAttribute('ip'))" x-bind:ip="c4r8"></div>
         </div>
 
     </div>
