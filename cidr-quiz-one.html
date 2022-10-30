@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CIDR Quiz - Inside</title>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <script src="//unpkg.com/ip.js"></script>
+    <style>
+        body {
+            background-color: lightgrey;
+            font-size: 2.0vw
+        }
+        div.hidden {
+            display: none;
+        }
+        /* DivTable.com */
+        .divTable{
+            display: table;
+            width: 100%;
+        }
+        .divTableRow {
+            display: table-row;
+        }
+        .divTableHeading {
+            background-color: #EEE;
+            display: table-header-group;
+        }
+        .divTableCell, .divTableHead {
+            /*border: 1px solid #999999;*/
+            display: table-cell;
+            padding: 3px 10px;
+        }
+        .divTableHeading {
+            background-color: #EEE;
+            display: table-header-group;
+            font-weight: bold;
+        }
+        .divTableFoot {
+            background-color: #EEE;
+            display: table-footer-group;
+            font-weight: bold;
+        }
+        .divTableBody {
+            display: table-row-group;
+        }
+        .octet {
+            font-family: "Courier New", monospace;
+            width: 5%;
+            display: inline-block;
+            text-align: right;
+            font-size: larger;
+        }
+        .mask {
+            font-family: "Courier New", monospace;
+            width: 40px;
+            display: inline-block;
+            font-size: larger;
+        }
+        .q {
+            font-family: "Courier New", monospace;
+            width: 40px;
+            font-size: larger;
+        }
+        .one {
+            color: red;
+            font-weight: bolder;
+        }
+        .two {
+            color: darkblue;
+            font-weight: bolder;
+        }
+        .fix {
+            color: saddlebrown;
+            font-weight: bolder;
+        }
+        .tile.green {
+            background-color: #AAFFAA;
+        }
+        .tile.red {
+            background-color: #FFAAAA;
+            text-align: center;
+        }
+
+    </style>
+    <script type="application/javascript">
+        function makeIpHmtl(ip, q) {
+            ip = new Ip.Prefix(ip.toString());
+
+            octets = ip.firstIp().toString().split('.');
+
+            mask = ip.getCidr()
+
+            return "<span class='octet "+q+"'>" + octets[0] + "</span>.<span class='octet "+q+"'>" + octets[1] + "</span>.<span class='octet'>" + octets[2] + "</span>.<span class='octet'>" + octets[3] + "</span> / <span class='mask'>" + mask + "</span>"
+        }
+        function randOctet() {
+            return Math.floor(Math.random() * 223);
+        }
+
+        function rand(min, max) {
+            diff = max - min;
+            return min + Math.floor(Math.random() * diff);
+        }
+
+        function contains(prefix, addr) {
+            start = prefix.firstIp().toNum();
+            console.log(start)
+            end = prefix.lastIp().toNum();
+            a = addr.toNum();
+            console.log(a);
+            console.log(end);
+
+
+
+            return start <= a && a <= end;
+        }
+
+        function first(maskLen) {
+            mask = Math.pow(2,32-maskLen) - 1;
+
+            console.log("mask: " + new Ip.Addr((~mask) >>> 0) + "  /" +  maskLen);
+            addr = new Ip.Addr(randOctet()+'.'+randOctet()+'.'+randOctet()+'.'+randOctet());
+            a = addr.toNum() & ~mask;
+            ip = new Ip.Addr(a >>> 0);
+
+            s = ip.toString() + "/" + maskLen;
+            prefix = new Ip.Prefix(s)
+            console.log(prefix.lastIp().toString())
+            return {str:s, ip: ip , mask: maskLen, prefix: prefix};
+        }
+
+        function second(one) {
+            // Generate a similar looking prefix
+            answer = Math.random() > 0.5;
+
+            length = rand(one.mask + 1, 30);
+            console.log("length: " + length);
+            offset = Math.pow(2, 32 - length);
+            console.log("offset: " + offset);
+            diff = length - one.mask;
+            console.log("diff: " + diff);
+            steps = Math.pow(2, diff);
+            console.log("steps: " + steps);
+
+            if (answer) {
+                step = rand(0, steps - 1);
+                answer = "yes";
+            }
+            else {
+                step = Math.random() > 0.5 ? -1 : steps + 1;
+                answer="no";
+            }
+
+            newnum = one.ip.toNum() + offset * step;
+
+            newIp = new Ip.Addr(newnum >>> 0);
+
+            return {str: newIp.toString()+"/"+length, ip: newIp, mask: length, answer: answer}
+            }
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('data', () => ({
+                ready: false,
+                question: '',
+                answer: '',
+                correct: 0,
+                incorrect: 0,
+                status: "",
+                response: "",
+                yespickno: "",
+                nopickyes: "",
+                chart: false,
+                showq: false,
+                questionerr: "",
+                prehtml: "",
+                actualhtml: "",
+                posthtml: "",
+                generate: function(){
+                    this.questionerr = "";
+                    this.chart = false;
+                    this.ready = true;
+                    one = first(rand(6,27));
+                    two = second(one);
+                    this.question = Math.random() > 0.5 ? "Does <span class='q one'>" + one.str + "</span> contain <span class='q two'>" + two.str + "</span>??" : "Is <span class='q two'>" + two.str + "</span> inside <span class='q one'>" + one.str + "</span>??";
+                    this.answer = contains(one.prefix, two.ip);
+
+
+                    console.log(this.answer);
+
+                    start = one.prefix.firstIp().toString()
+                    end = one.prefix.lastIp().toString()
+
+                    this.yespickno = "Remember <span class='q one'>" + one.str + "</span> is from <span class='q one'>" + start + "</span>-<span class='q one'>" + end + "</span> and <span class='q two'>" + two.str + "</span> is inside that range.";
+                    actual = new Ip.Prefix(two.ip.toString() + "/" + one.prefix.getCidr()).correctBitBoundary();
+
+                    oneIp = new Ip.Addr("0.0.0.1");
+
+                    pre = (new Ip.Prefix(actual.firstIp().subIp(oneIp).toString()+"/"+actual.getCidr())).correctBitBoundary();
+                    post = (new Ip.Prefix(actual.lastIp().addIp(oneIp).toString()+"/"+actual.getCidr())).correctBitBoundary();
+
+                    this.prehtml = "<span class='" + (pre.toString() == one.str ? 'one' : '') +"'>" + makeIpHmtl(pre) + "</span>";
+                    this.actualhtml = "<span class='" + (actual.toString() == one.str ? 'one' : 'fix') +"'>" + makeIpHmtl(actual) + "</span>&nbsp;&nbsp;<---&nbsp;&nbsp;<span class='two'>" + makeIpHmtl(two.ip + "/" + two.mask) + "</span>&nbsp;&nbsp;is in there";
+                    this.posthtml = "<span class='" + (post.toString() == one.str ? 'one' : '') +"'>" + makeIpHmtl(post) + "</span>";
+
+                    this.nopickyes = "<span class='q two'>" + two.str + "</span> is inside the <span class='q fix'>/" + one.prefix.getCidr() + "</span> of <span class='q fix'>" + actual.toString() + "</span> not <span class='q one'>" + one.str + "</span>";
+                    this.showq = true;
+                },
+                giveAnswer: function(ans) {
+                    this.showq = false;
+                    if (ans == this.answer) {
+                        this.generate();
+                        this.correct++;
+                        this.status = "Correct!";
+                        this.response = "";
+                    } else {
+                        this.incorrect ++;
+                        this.status = "Incorrect!";
+                        this.questionerr = this.question;
+                        this.response = !ans ? this.yespickno : this.nopickyes
+                        this.chart = true
+                    }
+                },
+                cont: function(and) {
+                    this.showq = true;
+                    this.status = "";
+                    this.response = "";
+                    this.generate();
+                }
+            }))
+        })
+    </script>
+</head>
+<body x-data="data" >
+    <div class="divTable" style="display: none;" x-show="showq">
+        <div class="divTableRow">
+            <div class="divTableCell">
+                <div>
+                    <div>
+                        <div style="margin-left: 25px;">
+                            <h2><span x-html="question"></span>??</h2>
+                            <button style="width: 100px;" x-on:click="giveAnswer(true)">Yes</button><button x-on:click="giveAnswer(false)" style="margin-left: 50px; width: 100px;">No</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="divTableCell">
+                <h2>Correct:</h2>
+                <h1 x-text="correct"></h1>
+            </div>
+            <div class="divTableCell">
+                <h2>Incorrect:</h2>
+                <h1 x-text="incorrect"></h1>
+            </div>
+        </div>
+    </div>
+    <div style="display: none; margin-left: 30px;" x-show="ready">
+        <h2 x-html="questionerr"></h2>
+        <button x-on:click="cont" x-show="!showq" style="width: 300px;">Continue</button>
+        <h1 x-text="status"></h1>
+        <h2 x-html="response"></h2>
+        <div x-show="chart">
+            <h2>Try to think of it like a table:</h2>
+            <div x-html="prehtml"></div>
+            <div x-html="actualhtml"></div>
+            <div x-html="posthtml"></div>
+        </div>
+    </div>
+    <div x-bind:class="ready?'hidden':''" style="margin-left: 30px;">
+        <h3>Are you ready?</h3>
+        <button x-on:click="generate">Start</button>
+    </div>
+</body>
+</html>
